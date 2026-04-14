@@ -18,6 +18,12 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Actions, die intern noch Node 20 nutzen (z.B. actions/deploy-pages@v4),
+# auf Node 24 zwingen – GitHub deprecated Node 20 ab 2026.
+# Hinweis in Actions: "Node.js 20 actions are deprecated ..."
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     name: Build
@@ -29,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies

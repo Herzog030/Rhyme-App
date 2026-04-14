@@ -16,12 +16,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
-        name: 'Deutsches Reimwörterbuch',
-        short_name: 'Reime',
+        name: 'My Book Of Rhymes',
+        short_name: 'MBoR',
         description:
-          'Persönliches deutsches Reimwörterbuch – offline, erweiterbar, auf dem Handy nutzbar.',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+          'My Book Of Rhymes – persönliches Textarchiv, Entwürfe und Reimwörterbuch, offline nutzbar.',
+        theme_color: '#faf7ef',
+        background_color: '#faf7ef',
         display: 'standalone',
         orientation: 'portrait',
         start_url: base,

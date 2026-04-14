@@ -1,93 +1,115 @@
-import { useEffect, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { addWords, db, wordCount } from './lib/db';
-import { SEED_WORDS } from './lib/seed';
-import SearchView from './views/SearchView';
-import ImportView from './views/ImportView';
-import LibraryView from './views/LibraryView';
+import { useEffect } from 'react';
+import { NavProvider, useNav } from './nav';
+import { cleanupLegacyDatabases } from './lib/db';
+import ArchiveView from './views/ArchiveView';
+import SongView from './views/SongView';
+import NewSongView from './views/NewSongView';
+import RhymesView from './views/RhymesView';
 import SettingsView from './views/SettingsView';
-
-type Tab = 'search' | 'import' | 'library' | 'settings';
-
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'search', label: 'Suchen', icon: '🔍' },
-  { id: 'import', label: 'Import', icon: '🎤' },
-  { id: 'library', label: 'Bibliothek', icon: '📚' },
-  { id: 'settings', label: 'Einstellungen', icon: '⚙︎' },
-];
+import { ArchiveIcon, BookIcon, SettingsIcon } from './components/Icon';
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('search');
-  const [seeded, setSeeded] = useState(false);
-  const total = useLiveQuery(() => wordCount(), [], 0);
-
   useEffect(() => {
-    (async () => {
-      const existing = await db.words.count();
-      if (existing === 0) {
-        await addWords(SEED_WORDS, { source: 'seed' });
-      }
-      setSeeded(true);
-    })();
+    // Einmalig die v0.1-DB aus dem Browser räumen (falls noch da).
+    cleanupLegacyDatabases();
   }, []);
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-10 border-b border-ink-800 bg-ink-950/80 px-4 py-3 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold tracking-tight">
-              Reim<span className="text-accent-400">wörter</span>buch
-            </h1>
-            <p className="text-xs text-ink-100/60">
-              {total ?? 0} Wörter · offline verfügbar
-            </p>
-          </div>
-          <div className="text-2xl">🎼</div>
-        </div>
-      </header>
+    <NavProvider>
+      <Shell />
+    </NavProvider>
+  );
+}
 
-      <main className="flex-1 overflow-y-auto px-4 pb-28 pt-4">
-        {!seeded ? (
-          <div className="flex h-64 items-center justify-center text-ink-100/60">
-            Lade Wortschatz …
-          </div>
-        ) : (
-          <>
-            {tab === 'search' && <SearchView />}
-            {tab === 'import' && <ImportView />}
-            {tab === 'library' && <LibraryView />}
-            {tab === 'settings' && <SettingsView />}
-          </>
-        )}
+function Shell() {
+  const { route } = useNav();
+
+  return (
+    <div className="mx-auto flex h-full max-w-3xl flex-col">
+      <Header />
+      <main className="flex-1 overflow-y-auto px-5 pb-32 pt-4">
+        {route.name === 'archive' && <ArchiveView />}
+        {route.name === 'song' && <SongView id={route.id} />}
+        {route.name === 'new-song' && <NewSongView />}
+        {route.name === 'rhymes' && <RhymesView />}
+        {route.name === 'settings' && <SettingsView />}
       </main>
+      <BottomNav />
+    </div>
+  );
+}
 
-      <nav
-        className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-2xl border-t border-ink-800 bg-ink-950/95 backdrop-blur"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <ul className="grid grid-cols-4">
-          {TABS.map((t) => (
-            <li key={t.id}>
+function Header() {
+  return (
+    <header className="sticky top-0 z-10 border-b border-stone-200 bg-cream-100/90 px-5 py-4 backdrop-blur">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-lg font-bold leading-none tracking-tight text-stone-900">
+            My <span className="text-leaf-700">Book</span> Of Rhymes
+          </h1>
+          <p className="mt-1 text-xs text-stone-500">
+            Textarchiv · Entwürfe · Reimwörterbuch
+          </p>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+type TabKey = 'archive' | 'rhymes' | 'settings';
+
+function BottomNav() {
+  const { route, go } = useNav();
+
+  const items: { key: TabKey; label: string; icon: typeof ArchiveIcon; target: () => void; active: boolean }[] = [
+    {
+      key: 'archive',
+      label: 'Archiv',
+      icon: ArchiveIcon,
+      target: () => go({ name: 'archive' }),
+      active: route.name === 'archive' || route.name === 'song' || route.name === 'new-song',
+    },
+    {
+      key: 'rhymes',
+      label: 'Reime',
+      icon: BookIcon,
+      target: () => go({ name: 'rhymes' }),
+      active: route.name === 'rhymes',
+    },
+    {
+      key: 'settings',
+      label: 'Einstellungen',
+      icon: SettingsIcon,
+      target: () => go({ name: 'settings' }),
+      active: route.name === 'settings',
+    },
+  ];
+
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-3xl border-t border-stone-200 bg-cream-50/95 backdrop-blur"
+      style={{ paddingBottom: 'var(--sat-bottom)' }}
+    >
+      <ul className="grid grid-cols-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.key}>
               <button
                 type="button"
-                onClick={() => setTab(t.id)}
-                className={`flex w-full flex-col items-center gap-0.5 py-3 text-xs transition-colors ${
-                  tab === t.id
-                    ? 'text-accent-400'
-                    : 'text-ink-100/60 hover:text-ink-100'
+                onClick={item.target}
+                className={`flex w-full flex-col items-center gap-1 py-3 text-[11px] font-medium transition-colors ${
+                  item.active ? 'text-leaf-700' : 'text-stone-500 hover:text-stone-800'
                 }`}
-                aria-current={tab === t.id ? 'page' : undefined}
+                aria-current={item.active ? 'page' : undefined}
               >
-                <span className="text-xl" aria-hidden>
-                  {t.icon}
-                </span>
-                {t.label}
+                <Icon size={22} />
+                {item.label}
               </button>
             </li>
-          ))}
-        </ul>
-      </nav>
-    </div>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

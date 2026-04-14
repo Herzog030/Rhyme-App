@@ -1,33 +1,35 @@
-# Deutsches Reimwörterbuch (PWA)
+# My Book Of Rhymes
 
-Ein offline-fähiges deutsches Reimwörterbuch als Progressive Web App –
-optimiert für die Nutzung auf dem Handy und durch eigene Songtexte
-beliebig erweiterbar.
+Persönliche PWA für mein **Textarchiv, Entwürfe und Reimwörterbuch** –
+offline nutzbar, mobile-first, alle Daten liegen lokal auf dem Gerät.
 
 ## Features
 
-- 🔍 **Reim-Suche** mit phonetischer Analyse (keine reine Text-Endungssuche)
-  - Reinreime (`Herz` ↔ `Schmerz`)
-  - Mehrsilbige Reime / „double rhymes" (`Liebe` ↔ `Triebe`)
-  - Assonanzen (gleicher Vokal, andere Konsonanten)
-  - Unreine Reime (konfigurierbar)
-- 🎤 **Songtext-Import:** Text einfügen → App erkennt Reimpaare am Zeilenende
-  automatisch und ergänzt den Wortschatz
-- ✏️ **Manuelle Reime** hinzufügen (Wortpaare, Notizen)
-- 📚 **Bibliothek** mit Filtern (Grundwortschatz / aus Songs / manuell) und
-  Löschfunktion
+- 📖 **Textarchiv** – vollständige Diskografie + Entwürfe + Ideen in einem
+  Archiv, unterschieden nur über Status-Flag (Idee / Entwurf / Released)
+  und Datum (YYYY-MM-DD)
+- ✍️ **Song-Editor** mit Titel, Artist, Datum, Status, Text, Notizen, Tags
+- 🎯 **Reime am Song** – pro Song kannst du Reimpaare oder -gruppen
+  festhalten. In Phase 4 werden diese zum kuratierten Reim-Wörterbuch
 - 💾 **Backup & Restore** per JSON-Export/Import
-- 📴 **Offline** nutzbar – alle Daten liegen lokal (IndexedDB)
-- 📱 **Installierbar** auf iOS/Android/Desktop (über „Zum Startbildschirm
-  hinzufügen")
+- 📴 **Offline** – alle Daten in IndexedDB, keine Konten, kein Tracking
+- 📱 **Installierbar** auf iOS/Android/Desktop als PWA
+
+## Roadmap
+
+| Phase | Status | Inhalt |
+|-------|--------|--------|
+| 1 | ✓ | Umbenennung, neues DB-Schema, alte Reim-Engine entfernt |
+| 2 | ✓ | Neues Design (cremiges Weiß, grüne Akzente, SVG-Icons) |
+| 3 | ✓ | Textarchiv mit Songs, Entwürfen, Ideen + Reime am Song |
+| 4 | ⏳ | Reim-Wörterbuch: hybrider Ansatz aus kuratierten Reimen und präzisen Vorschlägen |
 
 ## Tech Stack
 
 - **Vite + React + TypeScript**
-- **Dexie.js** (IndexedDB-Wrapper) für lokale Persistenz
+- **Dexie.js** (IndexedDB) für lokale Persistenz
 - **vite-plugin-pwa** für Service Worker & Manifest
-- **Tailwind CSS** für die mobile UI
-- **Vitest** für Tests der Phonetik/Reim-Engine
+- **Tailwind CSS** mit eigenem Token-System (`cream`, `leaf`, `stone`)
 
 ## Entwicklung
 
@@ -35,49 +37,25 @@ beliebig erweiterbar.
 npm install
 npm run dev        # Dev-Server (mit LAN-Zugriff)
 npm run typecheck  # TypeScript-Prüfung
-npm run test       # Unit-Tests (Phonetik & Reim-Matching)
+npm run test       # Unit-Tests
 npm run build      # Produktions-Build
-npm run preview    # Produktions-Build testen
+npm run preview    # Produktions-Build lokal testen
 ```
 
-## Architektur
+## Datenmodell
 
 ```
-src/
-├── lib/
-│   ├── phonetics.ts   # DE-Wort → Phoneme (Digraphen, Diphthonge,
-│   │                    Auslautverhärtung, Schwa, vokalisiertes R)
-│   ├── rhyme.ts       # Reim-Keys, Match-Logik, Qualitätsstufen
-│   ├── db.ts          # IndexedDB (Dexie) – Wörter/Songs/Paare
-│   ├── importer.ts    # Songtext-Parser (Zeilenende-Reime)
-│   └── seed.ts        # Grundwortschatz (offen, eigene Zusammenstellung)
-├── views/
-│   ├── SearchView.tsx
-│   ├── ImportView.tsx
-│   ├── LibraryView.tsx
-│   └── SettingsView.tsx
-├── App.tsx            # Tab-Navigation + Shell
-└── main.tsx           # Einstiegspunkt
+songs      id, title, artist, status, date, text, notes, tags,
+           createdAt, updatedAt
+rhymes     id, songId, words[], quality?, lineIndices?, note, createdAt
+vocabulary id, word, original, source, songId?, createdAt    (für Phase 4)
 ```
 
-## Reim-Algorithmus
+Reime gehören immer zu genau einem Song (enge Verzahnung – sie behalten so
+ihren Kontext). Die `vocabulary`-Tabelle liegt bereits im Schema vor, wird
+aber erst in Phase 4 von der UI genutzt.
 
-Wörter werden in eine vereinfachte Phonem-Sequenz übersetzt (keine
-vollständige IPA-Transkription, aber genau genug für Reim-Erkennung).
-Die Reim-Qualität wird anhand gemeinsamer End-Phoneme ab der letzten
-betonten Silbe bestimmt:
+## Deployment
 
-| Qualität    | Beispiel                         |
-|-------------|----------------------------------|
-| Mehrsilbig  | `Liebe` – `Triebe` (`-iebe`)     |
-| Reich       | `Gesicht` – `Gericht` (`-icht`)  |
-| Reinreim    | `Herz` – `Schmerz` (`-erz`)      |
-| Assonanz    | `Tag` – `Bahn` (Vokal `a`)       |
-| Unrein      | Teil-Übereinstimmung am Ende     |
-
-## Hinweis zu double-rhyme.com
-
-Diese App orientiert sich am **Konzept** von double-rhyme.com
-(mehrsilbige Reime, Assonanzen), übernimmt aber **keine Daten** aus
-dieser Seite. Der Wortschatz wird aus einem offenen Grundwortschatz
-und deinen eigenen Songtexten gebaut.
+Automatisch über GitHub Actions nach GitHub Pages:
+`https://herzog030.github.io/Rhyme-App/`

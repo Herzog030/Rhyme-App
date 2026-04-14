@@ -1,240 +1,236 @@
 import Dexie, { type Table } from 'dexie';
-import { computeIndexKeys } from './rhyme';
 
 /**
- * Ein Eintrag im persönlichen Reimwörterbuch.
+ * My Book Of Rhymes – Datenmodell.
  *
- * `word`      – die normalisierte Form (lowercase, getrimmt)
- * `original`  – Original-Schreibung (z.B. Großschreibung bei Substantiven)
- * `source`    – woher der Eintrag kommt (Seed / Song / Manuell)
- * `songTitle` – optional: Titel des Songs, aus dem das Wort stammt
- * `tags`      – freie Tags (z.B. "Liebe", "Rap", "Battle")
- * `syllables` – grobe Silbenzahl (nur zur Anzeige)
- * `rhymeKey`  – Phonem-Suffix ab letzter betonter Silbe (für schnelle Suche)
- * `doubleKey` – Phonem-Suffix ab zweitletzter Silbe (Doppelreim)
- * `tripleKey` – Phonem-Suffix ab drittletzter Silbe (Tripelreim)
- * `assonance` – nur Vokalfolge am Wortende (Assonanz)
- * `createdAt` – Zeitstempel (ms)
+ *  songs      – die zentrale Tabelle: Releases, Entwürfe und Ideen
+ *               (unterschieden nur über status + date).
+ *  rhymes     – Reimpaare/-gruppen, die an einem Song hängen.
+ *               Design-Entscheidung: Reime gehören immer zu einem
+ *               Song (eng verzahnt), damit sie im Kontext bleiben.
+ *  vocabulary – optionaler gemeinsamer Wortschatz für spätere
+ *               Reim-Vorschläge (Phase 4).
  */
-export interface WordEntry {
-  id?: number;
-  word: string;
-  original: string;
-  source: 'seed' | 'song' | 'manual';
-  songTitle?: string;
-  tags?: string[];
-  syllables: number;
-  rhymeKey: string;
-  doubleKey: string;
-  tripleKey: string;
-  assonance: string;
-  createdAt: number;
-}
 
-export interface SongEntry {
+export type SongStatus = 'idea' | 'draft' | 'released';
+
+export interface Song {
   id?: number;
   title: string;
   artist?: string;
+  status: SongStatus;
+  /** ISO-Datum im Format YYYY-MM-DD. Optional: Ideen/Entwürfe haben oft noch keins. */
+  date?: string;
   text: string;
+  notes?: string;
+  tags?: string[];
   createdAt: number;
+  updatedAt: number;
 }
 
-export interface RhymePair {
+export type RhymeQuality = 'perfect' | 'multi' | 'slant' | 'assonance';
+
+export interface Rhyme {
   id?: number;
-  a: string;
-  b: string;
-  source: 'song' | 'manual';
-  songId?: number;
-  songTitle?: string;
+  songId: number;
+  /** Die einzelnen Wörter, die miteinander reimen (mind. 2). */
+  words: string[];
+  quality?: RhymeQuality;
+  /** Optional: Zeilennummer(n) im Songtext, wo der Reim vorkommt. */
+  lineIndices?: number[];
   note?: string;
   createdAt: number;
 }
 
-class RhymeDB extends Dexie {
-  words!: Table<WordEntry, number>;
-  songs!: Table<SongEntry, number>;
-  pairs!: Table<RhymePair, number>;
+/**
+ * Vokabular-Eintrag – vorerst nicht aktiv in der UI, aber das Schema
+ * steht bereit, damit die Reim-Engine in Phase 4 direkt darauf aufbauen
+ * kann, ohne Migration.
+ */
+export interface VocabularyEntry {
+  id?: number;
+  word: string;
+  original: string;
+  /** Herkunft: manueller Eintrag oder aus einem Song. */
+  source: 'manual' | 'song';
+  songId?: number;
+  createdAt: number;
+}
+
+class MyBookOfRhymesDB extends Dexie {
+  songs!: Table<Song, number>;
+  rhymes!: Table<Rhyme, number>;
+  vocabulary!: Table<VocabularyEntry, number>;
 
   constructor() {
-    super('ReimwoerterbuchDB');
+    super('MyBookOfRhymesDB');
     this.version(1).stores({
-      words:
-        '++id, &word, rhymeKey, doubleKey, tripleKey, assonance, source, createdAt',
-      songs: '++id, title, createdAt',
-      pairs: '++id, a, b, songId, source, createdAt',
+      songs: '++id, title, artist, status, date, createdAt, updatedAt',
+      rhymes: '++id, songId, createdAt',
+      vocabulary: '++id, &word, source, songId, createdAt',
     });
   }
 }
 
-export const db = new RhymeDB();
-
-function countSyllablesApprox(word: string): number {
-  // Sehr grobe Schätzung: Anzahl Vokalgruppen
-  const lower = word.toLowerCase();
-  const groups = lower.match(/[aeiouäöüy]+/g);
-  return groups ? groups.length : 1;
-}
+export const db = new MyBookOfRhymesDB();
 
 /**
- * Fügt ein Wort hinzu – falls es schon existiert, werden Quelle/Tags ggf.
- * aktualisiert. Gibt die ID zurück.
+ * Einmalig beim App-Start ausführen: die alte v0.1 Datenbank
+ * „ReimwoerterbuchDB" entfernen, damit keine Zombie-Daten im
+ * Browser liegen bleiben.
  */
-export async function addWord(
-  original: string,
-  opts: {
-    source?: WordEntry['source'];
-    songTitle?: string;
-    tags?: string[];
-  } = {},
-): Promise<number | null> {
-  const word = original.toLowerCase().trim();
-  if (!word || !/^[a-zäöüß\-']+$/.test(word)) return null;
-  const keys = computeIndexKeys(word);
-  if (!keys.rhymeKey) return null;
-
-  const existing = await db.words.where('word').equals(word).first();
-  if (existing) {
-    const merged: WordEntry = {
-      ...existing,
-      source: opts.source ?? existing.source,
-      songTitle: opts.songTitle ?? existing.songTitle,
-      tags: Array.from(new Set([...(existing.tags ?? []), ...(opts.tags ?? [])])),
-    };
-    await db.words.put(merged);
-    return existing.id ?? null;
+export async function cleanupLegacyDatabases(): Promise<void> {
+  try {
+    await Dexie.delete('ReimwoerterbuchDB');
+  } catch {
+    // keine Legacy-DB vorhanden – völlig ok
   }
+}
 
-  const entry: WordEntry = {
-    word,
-    original: original.trim(),
-    source: opts.source ?? 'manual',
-    songTitle: opts.songTitle,
-    tags: opts.tags,
-    syllables: countSyllablesApprox(word),
-    ...keys,
+// --- Songs ---------------------------------------------------------------
+
+export async function createSong(
+  input: Pick<Song, 'title'> & Partial<Omit<Song, 'id' | 'createdAt' | 'updatedAt'>>,
+): Promise<number> {
+  const now = Date.now();
+  const song: Song = {
+    title: input.title.trim() || 'Ohne Titel',
+    artist: input.artist?.trim() || undefined,
+    status: input.status ?? 'draft',
+    date: input.date || undefined,
+    text: input.text ?? '',
+    notes: input.notes ?? '',
+    tags: input.tags ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  return (await db.songs.add(song)) as number;
+}
+
+export async function updateSong(
+  id: number,
+  patch: Partial<Omit<Song, 'id' | 'createdAt'>>,
+): Promise<void> {
+  const clean: Partial<Song> = { ...patch, updatedAt: Date.now() };
+  await db.songs.update(id, clean);
+}
+
+export async function deleteSong(id: number): Promise<void> {
+  await db.transaction('rw', db.songs, db.rhymes, async () => {
+    await db.rhymes.where('songId').equals(id).delete();
+    await db.songs.delete(id);
+  });
+}
+
+export async function getSong(id: number): Promise<Song | undefined> {
+  return db.songs.get(id);
+}
+
+// --- Rhymes (am Song) ----------------------------------------------------
+
+export async function addRhymeToSong(
+  songId: number,
+  words: string[],
+  opts: { quality?: RhymeQuality; note?: string; lineIndices?: number[] } = {},
+): Promise<number | null> {
+  const cleaned = words.map((w) => w.trim()).filter(Boolean);
+  if (cleaned.length < 2) return null;
+  const rhyme: Rhyme = {
+    songId,
+    words: cleaned,
+    quality: opts.quality,
+    note: opts.note,
+    lineIndices: opts.lineIndices,
     createdAt: Date.now(),
   };
-  return (await db.words.add(entry)) as number;
+  return (await db.rhymes.add(rhyme)) as number;
 }
 
-export async function addWords(
-  words: string[],
-  opts: { source?: WordEntry['source']; songTitle?: string; tags?: string[] } = {},
-): Promise<number> {
-  let added = 0;
-  await db.transaction('rw', db.words, async () => {
-    for (const w of words) {
-      const id = await addWord(w, opts);
-      if (id !== null) added++;
-    }
-  });
-  return added;
+export async function updateRhyme(
+  id: number,
+  patch: Partial<Omit<Rhyme, 'id' | 'songId' | 'createdAt'>>,
+): Promise<void> {
+  await db.rhymes.update(id, patch);
 }
 
-export async function deleteWord(id: number): Promise<void> {
-  await db.words.delete(id);
+export async function deleteRhyme(id: number): Promise<void> {
+  await db.rhymes.delete(id);
 }
 
-export async function wordCount(): Promise<number> {
-  return db.words.count();
+export async function listRhymesForSong(songId: number): Promise<Rhyme[]> {
+  return db.rhymes.where('songId').equals(songId).toArray();
 }
 
-export async function addSong(song: Omit<SongEntry, 'id' | 'createdAt'>): Promise<number> {
-  return (await db.songs.add({ ...song, createdAt: Date.now() })) as number;
-}
+// --- Export / Import ----------------------------------------------------
 
-export async function addPair(
-  a: string,
-  b: string,
-  opts: {
-    source?: RhymePair['source'];
-    songId?: number;
-    songTitle?: string;
-    note?: string;
-  } = {},
-): Promise<number | null> {
-  const aa = a.toLowerCase().trim();
-  const bb = b.toLowerCase().trim();
-  if (!aa || !bb || aa === bb) return null;
-  const [x, y] = [aa, bb].sort();
-  const existing = await db.pairs.where({ a: x, b: y }).first();
-  if (existing) return existing.id ?? null;
-  return (await db.pairs.add({
-    a: x,
-    b: y,
-    source: opts.source ?? 'manual',
-    songId: opts.songId,
-    songTitle: opts.songTitle,
-    note: opts.note,
-    createdAt: Date.now(),
-  })) as number;
-}
-
-/**
- * Komplett-Export aller Daten als JSON (z.B. für Backup/Transfer).
- */
 export async function exportAll(): Promise<string> {
-  const [words, songs, pairs] = await Promise.all([
-    db.words.toArray(),
+  const [songs, rhymes, vocabulary] = await Promise.all([
     db.songs.toArray(),
-    db.pairs.toArray(),
+    db.rhymes.toArray(),
+    db.vocabulary.toArray(),
   ]);
   return JSON.stringify(
     {
+      app: 'my-book-of-rhymes',
       version: 1,
       exportedAt: new Date().toISOString(),
-      words,
       songs,
-      pairs,
+      rhymes,
+      vocabulary,
     },
     null,
     2,
   );
 }
 
-/**
- * Import aus JSON – fügt zu den bestehenden Daten hinzu (ohne zu löschen).
- */
-export async function importAll(json: string): Promise<{ words: number; songs: number; pairs: number }> {
+export async function importAll(json: string): Promise<{ songs: number; rhymes: number; vocabulary: number }> {
   const data = JSON.parse(json) as {
-    words?: WordEntry[];
-    songs?: SongEntry[];
-    pairs?: RhymePair[];
+    songs?: Song[];
+    rhymes?: Rhyme[];
+    vocabulary?: VocabularyEntry[];
   };
-  const res = { words: 0, songs: 0, pairs: 0 };
-  await db.transaction('rw', db.words, db.songs, db.pairs, async () => {
-    for (const w of data.words ?? []) {
-      const { id: _id, ...rest } = w;
-      void _id;
-      const existing = await db.words.where('word').equals(rest.word).first();
-      if (!existing) {
-        await db.words.add(rest);
-        res.words++;
-      }
-    }
+  const res = { songs: 0, rhymes: 0, vocabulary: 0 };
+
+  await db.transaction('rw', db.songs, db.rhymes, db.vocabulary, async () => {
+    // Songs importieren. IDs remappen, damit Rhymes danach korrekt zuordnen.
+    const idMap = new Map<number, number>();
     for (const s of data.songs ?? []) {
-      const { id: _id, ...rest } = s;
-      void _id;
-      await db.songs.add(rest);
+      const { id: oldId, ...rest } = s;
+      const newId = (await db.songs.add(rest)) as number;
+      if (oldId != null) idMap.set(oldId, newId);
       res.songs++;
     }
-    for (const p of data.pairs ?? []) {
-      const { id: _id, ...rest } = p;
+
+    for (const r of data.rhymes ?? []) {
+      const { id: _id, songId, ...rest } = r;
       void _id;
-      const existing = await db.pairs.where({ a: rest.a, b: rest.b }).first();
+      const mappedSongId = idMap.get(songId) ?? songId;
+      await db.rhymes.add({ ...rest, songId: mappedSongId });
+      res.rhymes++;
+    }
+
+    for (const v of data.vocabulary ?? []) {
+      const { id: _id, ...rest } = v;
+      void _id;
+      const existing = await db.vocabulary.where('word').equals(rest.word).first();
       if (!existing) {
-        await db.pairs.add(rest);
-        res.pairs++;
+        await db.vocabulary.add(rest);
+        res.vocabulary++;
       }
     }
   });
+
   return res;
 }
 
 export async function clearAll(): Promise<void> {
-  await db.transaction('rw', db.words, db.songs, db.pairs, async () => {
-    await db.words.clear();
+  await db.transaction('rw', db.songs, db.rhymes, db.vocabulary, async () => {
     await db.songs.clear();
-    await db.pairs.clear();
+    await db.rhymes.clear();
+    await db.vocabulary.clear();
   });
+}
+
+export async function songCount(): Promise<number> {
+  return db.songs.count();
 }

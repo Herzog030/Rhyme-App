@@ -1,9 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  --sat-top: env(safe-area-inset-top);
+  --sat-bottom: env(safe-area-inset-bottom);
 }
 
 html,
@@ -13,23 +17,38 @@ body,
 }
 
 body {
-  @apply bg-ink-950 text-ink-50 antialiased;
-  font-feature-settings: 'ss01', 'cv02';
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  @apply bg-cream-100 text-stone-800 antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+  padding-top: var(--sat-top);
+  padding-bottom: var(--sat-bottom);
 }
 
-/* Nicer mobile tap targets */
 button,
 [role='button'] {
   touch-action: manipulation;
 }
 
-/* Scrollbars – subtle */
+/* Dezente Scrollbars für Desktop */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-ink-800 rounded-full;
+  @apply bg-stone-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-stone-400;
+}
+
+/* Fokus-Stil global sichtbar, aber ruhig */
+:focus-visible {
+  outline: 2px solid theme('colors.leaf.600');
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Textareas + Inputs: Platzhalter-Farbe */
+input::placeholder,
+textarea::placeholder {
+  @apply text-stone-400;
 }

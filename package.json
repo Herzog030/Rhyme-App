@@ -1,15 +1,15 @@
 {
-  "name": "reimwoerterbuch",
+  "name": "my-book-of-rhymes",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Deutsches Reimwörterbuch als PWA – offline, mobil, erweiterbar",
+  "description": "My Book Of Rhymes – Textarchiv, Entwürfe und Reimwörterbuch als PWA",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc -b --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "dexie": "^4.0.10",

@@ -128,16 +128,12 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
 }
 
 const STATUS_STYLE: Record<SongStatus, { label: string; className: string }> = {
-  idea: {
-    label: 'Idee',
-    className: 'bg-amber-50 text-amber-800 border-amber-200',
-  },
   draft: {
     label: 'Entwurf',
-    className: 'bg-stone-100 text-stone-700 border-stone-200',
+    className: 'bg-red-50 text-red-700 border-red-200',
   },
   released: {
-    label: 'Released',
+    label: 'Veröffentlicht',
     className: 'bg-leaf-100 text-leaf-800 border-leaf-200',
   },
 };

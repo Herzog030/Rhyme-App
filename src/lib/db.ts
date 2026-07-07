@@ -12,7 +12,7 @@ import Dexie, { type Table } from 'dexie';
  *               Reim-Vorschläge (Phase 4).
  */
 
-export type SongStatus = 'idea' | 'draft' | 'released';
+export type SongStatus = 'draft' | 'released';
 
 export interface Song {
   id?: number;
@@ -69,6 +69,17 @@ class MyBookOfRhymesDB extends Dexie {
       rhymes: '++id, songId, createdAt',
       vocabulary: '++id, &word, source, songId, createdAt',
     });
+    this.version(2)
+      .stores({
+        songs: '++id, title, artist, status, date, createdAt, updatedAt',
+        rhymes: '++id, songId, createdAt',
+        vocabulary: '++id, &word, source, songId, createdAt',
+      })
+      .upgrade((tx) =>
+        tx.table('songs').toCollection().modify((s: Song) => {
+          if ((s.status as string) === 'idea') s.status = 'draft';
+        }),
+      );
   }
 }
 

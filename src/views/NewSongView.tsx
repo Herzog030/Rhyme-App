@@ -5,9 +5,8 @@ import { Button, Card, TextArea, TextField } from '../components/UI';
 import { CheckIcon, ChevronLeftIcon } from '../components/Icon';
 
 const STATUS_OPTIONS: { value: SongStatus; label: string; hint: string }[] = [
-  { value: 'idea', label: 'Idee', hint: 'Erster Funke, noch wenig Struktur' },
-  { value: 'draft', label: 'Entwurf', hint: 'In Arbeit' },
-  { value: 'released', label: 'Released', hint: 'Veröffentlicht' },
+  { value: 'draft', label: 'Entwurf', hint: 'In Arbeit – noch nicht draußen' },
+  { value: 'released', label: 'Veröffentlicht', hint: 'Fertig und raus' },
 ];
 
 export default function NewSongView() {
@@ -87,7 +86,7 @@ export default function NewSongView() {
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-stone-500">
             Status
           </span>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {STATUS_OPTIONS.map((o) => (
               <button
                 key={o.value}

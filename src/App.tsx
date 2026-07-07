@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavProvider, useNav } from './nav';
 import { cleanupLegacyDatabases } from './lib/db';
-import ArchiveView from './views/ArchiveView';
+import TextsView from './views/TextsView';
 import SongView from './views/SongView';
 import NewSongView from './views/NewSongView';
 import RhymesView from './views/RhymesView';
@@ -28,7 +28,7 @@ function Shell() {
     <div className="mx-auto flex h-full max-w-3xl flex-col">
       <Header />
       <main className="flex-1 overflow-y-auto px-5 pb-32 pt-4">
-        {route.name === 'archive' && <ArchiveView />}
+        {route.name === 'archive' && <TextsView />}
         {route.name === 'song' && <SongView id={route.id} />}
         {route.name === 'new-song' && <NewSongView />}
         {route.name === 'rhymes' && <RhymesView />}
@@ -64,7 +64,7 @@ function BottomNav() {
   const items: { key: TabKey; label: string; icon: typeof ArchiveIcon; target: () => void; active: boolean }[] = [
     {
       key: 'archive',
-      label: 'Archiv',
+      label: 'Texte',
       icon: ArchiveIcon,
       target: () => go({ name: 'archive' }),
       active: route.name === 'archive' || route.name === 'song' || route.name === 'new-song',

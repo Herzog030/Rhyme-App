@@ -20,9 +20,8 @@ import {
 } from '../components/Icon';
 
 const STATUS_OPTIONS: { value: SongStatus; label: string }[] = [
-  { value: 'idea', label: 'Idee' },
   { value: 'draft', label: 'Entwurf' },
-  { value: 'released', label: 'Released' },
+  { value: 'released', label: 'Veröffentlicht' },
 ];
 
 interface SongViewProps {
@@ -94,7 +93,7 @@ export default function SongView({ id }: SongViewProps) {
           icon={<ChevronLeftIcon size={16} />}
           onClick={() => go({ name: 'archive' })}
         >
-          Archiv
+          Texte
         </Button>
         <div className="flex items-center gap-2">
           {saved && <Toast tone="success" message="Gespeichert" />}
